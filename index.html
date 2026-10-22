@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f0f10">
+<title>Panel Operativo Lima</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: encabezado fijo negro/dorado como el reporte, KPIs 2x2, lista de clientes en tarjetas; filtros en hoja inferior */
+:root{
+  --bg:#f3f2ee; --surface:#ffffff; --ink:#17171a; --muted:#6a6862; --line:#e2dfd6;
+  --brand:#111113; --gold:#f2b705; --gold-ink:#7a5a00;
+  --ok:#1f8a4c; --ok-bg:#e3f4ea; --warn:#a86a00; --warn-bg:#fdf1d8;
+  --bad:#c0352b; --bad-bg:#fbe4e1; --pend:#6b3fa0; --pend-bg:#efe6fa; --sync:#5d6168; --sync-bg:#eceef0;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f0f10; --surface:#1a1a1d; --ink:#f1efe9; --muted:#a19e95; --line:#2c2c30;
+  --gold-ink:#f2b705;
+  --ok:#4cc483; --ok-bg:#16301f; --warn:#f0b54a; --warn-bg:#33270f;
+  --bad:#ff7b6e; --bad-bg:#3a1714; --pend:#c39cf2; --pend-bg:#2a1d3a; --sync:#b5b9bf; --sync-bg:#26282b;
+  color-scheme:dark;}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 var(--body);-webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom,0px)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--brand);z-index:20}
+[hidden]{display:none!important}
+button,select,input{font:inherit;color:inherit}
+.wrap{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));max-width:760px;margin:0 auto}
+
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--brand);color:#f6f3ea;border-bottom:2px solid var(--gold)}
+.hd{display:flex;align-items:center;gap:10px;padding-block:10px}
+.hd h1{margin:0;font:700 22px/1 var(--display);letter-spacing:.01em;color:var(--gold);text-transform:uppercase}
+.hd .sub{font-size:12px;color:#bdb8aa;margin-top:3px}
+.hd .grow{flex:1;min-width:0}
+.iconbtn{border:1px solid #3a3a3f;background:#1d1d21;color:#f6f3ea;border-radius:10px;height:38px;min-width:38px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.iconbtn:focus-visible,.chip:focus-visible,.btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.iconbtn svg{width:18px;height:18px}
+.iconbtn .badge{background:var(--gold);color:#111;border-radius:9px;font-size:11px;font-weight:600;padding:0 6px;line-height:18px}
+.spin svg{animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.live{display:inline-flex;align-items:center;gap:5px}
+.live i{width:7px;height:7px;border-radius:50%;background:#4cc483;display:inline-block}
+
+.chips{display:flex;gap:6px;overflow-x:auto;padding-block:8px 10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid #3a3a3f;background:#1d1d21;color:#e9e5d9;border-radius:999px;padding:4px 10px;font-size:12.5px;white-space:nowrap;cursor:pointer}
+.chip b{color:var(--gold);font-weight:600}
+
+main{padding-block:14px 40px;display:grid;gap:14px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.kpi .lbl{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.kpi .val{font:700 34px/1.05 var(--display);font-variant-numeric:tabular-nums;margin-top:4px}
+.kpi.avance{background:var(--brand);border-color:var(--brand);color:#f6f3ea}
+.kpi.avance .lbl{color:#bdb8aa}
+.kpi.avance .val{color:var(--gold)}
+.bar{height:6px;background:#2e2e33;border-radius:3px;margin-top:8px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--gold);width:0;transition:width .5s}
+.kpi .val.ok{color:var(--ok)} .kpi .val.pd{color:var(--pend)}
+
+.listhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.listhead h2{margin:0;font:700 20px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
+.listhead .meta{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.search{position:relative}
+.search input{width:100%;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:0 40px 0 14px}
+.search input:focus{outline:2px solid var(--gold);outline-offset:0}
+.search button{position:absolute;right:4px;top:4px;height:36px;width:36px;border:0;background:none;color:var(--muted);cursor:pointer}
+
+.list{display:grid;gap:8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:8px}
+.card.alert{border-left:4px solid var(--bad)}
+.row1{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.cli{min-width:0}
+.cli .n{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.cli .id{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pill{flex:none;font-size:11.5px;font-weight:600;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.st-ent{background:var(--ok-bg);color:var(--ok)}
+.st-vis{background:var(--pend-bg);color:var(--pend)}
+.st-syn{background:var(--sync-bg);color:var(--sync)}
+.st-mod{background:var(--warn-bg);color:var(--warn)}
+.st-rec{background:var(--bad-bg);color:var(--bad)}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px;font-size:12.5px}
+.facts div{min-width:0}
+.facts span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.facts strong{font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.facts .wide{grid-column:span 3}
+.al{background:var(--bad-bg);border-radius:10px;padding:8px 10px;font-size:13px;display:grid;gap:2px}
+.al .t{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:600;color:var(--bad)}
+.al .t small{font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.more{justify-self:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;height:44px;padding:0 18px;cursor:pointer;font-weight:600}
+.btn.pri{background:var(--gold);border-color:var(--gold);color:#111}
+.empty,.err{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:24px 16px;text-align:center;color:var(--muted)}
+.err{border-color:var(--bad);color:var(--ink)}
+.sk{background:linear-gradient(90deg,var(--line),var(--surface),var(--line));background-size:200% 100%;animation:sh 1.2s infinite;border-radius:14px;height:96px}
+@keyframes sh{to{background-position:-200% 0}}
+
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:30}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:31;background:var(--surface);border-radius:18px 18px 0 0;max-height:88vh;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet .top{display:flex;align-items:center;justify-content:space-between;padding:14px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px))}
+.sheet .top h3{margin:0;font:700 20px/1 var(--display);text-transform:uppercase}
+.sheet .body{overflow-y:auto;padding:4px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));display:grid;gap:12px}
+.fld{display:grid;gap:4px}
+.fld label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.fld select{height:46px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:0 12px;width:100%}
+.sheet .foot{display:flex;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px));border-top:1px solid var(--line)}
+.sheet .foot .btn{flex:1}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="hd">
+      <div class="grow">
+        <h1>Panel Operativo</h1>
+        <div class="sub"><span class="live"><i></i>Entregas y retroalimentación</span> · <span id="upd">Cargando…</span></div>
+      </div>
+      <button class="iconbtn" id="btnRefresh" aria-label="Actualizar datos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>
+      </button>
+      <button class="iconbtn" id="btnFilters" aria-label="Abrir filtros">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        <span class="badge" id="fCount" hidden>0</span>
+      </button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="kpis" aria-label="Indicadores">
+    <div class="kpi"><div class="lbl">Clientes</div><div class="val" id="kCli">–</div></div>
+    <div class="kpi"><div class="lbl">Entregados</div><div class="val ok" id="kEnt">–</div></div>
+    <div class="kpi"><div class="lbl">Pendiente</div><div class="val pd" id="kPen">–</div></div>
+    <div class="kpi avance"><div class="lbl">Avance</div><div class="val" id="kAv">–</div><div class="bar"><span id="kBar"></span></div></div>
+  </section>
+
+  <div class="search">
+    <input id="q" type="search" placeholder="Buscar cliente, código o ruta" autocomplete="off" enterkeyhint="search">
+    <button id="qClear" aria-label="Borrar búsqueda" hidden>✕</button>
+  </div>
+
+  <div class="listhead">
+    <h2>Detalle de clientes</h2>
+    <div class="meta" id="meta"></div>
+  </div>
+  <div class="list" id="list"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+</main>
+
+<div class="sheet-bg" id="sheetBg" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="top"><h3 id="sheetTitle">Filtros</h3><button class="btn" id="sheetClose">Cerrar</button></div>
+  <div class="body" id="sheetBody"></div>
+  <div class="foot"><button class="btn" id="fClear">Limpiar</button><button class="btn pri" id="fApply">Aplicar</button></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---- Conexión al reporte publicado (mismo origen de datos que el link de Power BI) ---- */
+const API = "https://wabi-south-central-us-api.analysis.windows.net/public/reports/querydata?synchronous=true";
+const RESOURCE_KEY = "c3d3af99-81fe-49b4-b72a-b544b82487ac";
+const DATASET_ID = "1826684e-034a-4062-93c6-a2a64cfd83b6";
+const REPORT_ID = "97a04b90-a661-4a18-a438-c0997ab582ac";
+const MODEL_ID = 11984376;
+const AUTO_REFRESH_MIN = 5;
+const PAGE = 40;
+
+/* Segmentadores de la página 2 (mismo orden que en el reporte) */
+const FILTERS = [
+  {k:"fecha", label:"Fecha Plan", src:"h", col:"Fecha Filtro", all:false, def:"Hoy"},
+  {k:"centro", label:"Centro", src:"d", col:"Centro Distribucion"},
+  {k:"ruta", label:"Ruta", src:"h", col:"ruta"},
+  {k:"edt", label:"EDT", src:"h", col:"edt"},
+  {k:"unidad", label:"Unidad Negocio", src:"h", col:"unidad_negocio"},
+  {k:"supervisor", label:"Supervisor", src:"h", col:"supervisor"},
+  {k:"alerta", label:"Alerta", src:"h", col:"Alerta"},
+  {k:"estado", label:"Status", src:"h", col:"Estado Final"}
+];
+const FROM = [{Name:"h",Entity:"HR",Type:0},{Name:"d",Entity:"DIR LIMA CENTRO",Type:0},{Name:"_",Entity:"_Medidas",Type:0},{Name:"a",Entity:"ActualizadoFechayHora",Type:0}];
+
+let state = {q:""}; FILTERS.forEach(f=>state[f.k]=f.def||"");
+try{ const s=JSON.parse(localStorage.getItem("panelOp.filters")||"null"); if(s) Object.assign(state,s); }catch(e){}
+const save=()=>{try{localStorage.setItem("panelOp.filters",JSON.stringify(state))}catch(e){}};
+
+const $=id=>document.getElementById(id);
+const col=(s,p)=>({Column:{Expression:{SourceRef:{Source:s}},Property:p}});
+const lit=v=>({Literal:{Value:"'"+String(v).replace(/'/g,"''")+"'"}});
+
+function where(exclude){
+  const w=[];
+  FILTERS.forEach(f=>{ const v=state[f.k]; if(v && f.k!==exclude) w.push({Condition:{In:{Expressions:[col(f.src,f.col)],Values:[[lit(v)]]}}}); });
+  if(state.q && exclude!=="q") w.push({Condition:{Contains:{Left:col("h","BusquedaCliente"),Right:lit(state.q)}}});
+  return w;
+}
+function body(select, w, binding, orderBy){
+  const q={Version:2,From:FROM,Select:select,Where:w};
+  if(orderBy) q.OrderBy=orderBy;
+  return {version:"1.0.0",queries:[{Query:{Commands:[{SemanticQueryDataShapeCommand:{Query:q,Binding:binding,ExecutionMetricsKind:1}}]},QueryId:"",ApplicationContext:{DatasetId:DATASET_ID,Sources:[{ReportId:REPORT_ID}]}}],cancelQueries:[],modelId:MODEL_ID};
+}
+async function run(b, signal){
+  const r=await fetch(API,{method:"POST",signal,headers:{"Content-Type":"application/json","X-PowerBI-ResourceKey":RESOURCE_KEY},body:JSON.stringify(b)});
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  const j=await r.json();
+  const res=j.results&&j.results[0]&&j.results[0].result;
+  if(!res||!res.data||!res.data.dsr) throw new Error("Respuesta sin datos");
+  if(res.data.dsr.DataShapes&&res.data.dsr.DataShapes[0]&&res.data.dsr.DataShapes[0]["odata.error"]) throw new Error("Error en la consulta");
+  return res.data.dsr.DS[0];
+}
+/* Decodifica el formato comprimido de Power BI (diccionarios, repeticiones y nulos) */
+function decode(rows, dicts){
+  const out=[]; let schema=null, prev=[];
+  (rows||[]).forEach(row=>{
+    if(row.S) schema=row.S;
+    if(!schema) return;
+    const R=row.R||0, Z=row["Ø"]||0, vals=[]; let k=0;
+    for(let i=0;i<schema.length;i++){
+      if((R>>i)&1){vals[i]=prev[i];continue}
+      if((Z>>i)&1){vals[i]=null;continue}
+      let v=row.C?row.C[k++]:row[schema[i].N];
+      if(schema[i].DN && typeof v==="number" && dicts && dicts[schema[i].DN]) v=dicts[schema[i].DN][v];
+      vals[i]=v;
+    }
+    prev=vals; out.push(vals);
+  });
+  return out;
+}
+const dmRows=(ds,idx)=>{const ph=ds.PH[idx]; if(!ph) return []; const key=Object.keys(ph).find(x=>/^DM/.test(x)); return key?ph[key]:[]};
+
+/* ---- Consultas ---- */
+const TABLE_COLS=[["edt"],["ruta"],["viaje"],["cliente"],["cliente_nombre"],["supervisor"],["zona_pem"],["ventana_horaria"],["Estado Final"],["Alerta"],["Tipo Alerta"],["Fecha Hora Alerta"],["Retroalimentacion"]];
+function tableQuery(){
+  const sel=TABLE_COLS.map(([p])=>Object.assign(col("h",p),{Name:"HR."+p}));
+  sel.push({Aggregation:{Expression:col("h","hl_planificado"),Function:0},Name:"Sum(HR.hl_planificado)"});
+  sel.push({Aggregation:{Expression:col("h","cant_planificada"),Function:4},Name:"Sum(HR.cant_planificada)"});
+  return body(sel, where(), {Primary:{Groupings:[{Projections:sel.map((_,i)=>i),Subtotal:1}]},DataReduction:{DataVolume:3,Primary:{Window:{Count:30000}}},Version:1}, [{Direction:2,Expression:col("h","edt")}]);
+}
+function kpiQuery(){
+  const sel=["Clientes","Entregados","Pendiente","Avance %"].map(m=>({Measure:{Expression:{SourceRef:{Source:"_"}},Property:m},Name:"_Medidas."+m}));
+  return body(sel, where(), {Primary:{Groupings:[{Projections:[0,1,2,3]}]},DataReduction:{DataVolume:3,Primary:{Top:{}}},Version:1});
+}
+function updQuery(){
+  const sel=[{Measure:{Expression:{SourceRef:{Source:"a"}},Property:"Informe Actualizado"},Name:"ActualizadoFechayHora.Informe Actualizado"}];
+  return body(sel, [], {Primary:{Groupings:[{Projections:[0]}]},DataReduction:{DataVolume:3,Primary:{Top:{}}},Version:1});
+}
+function optQuery(f){
+  const sel=[Object.assign(col(f.src,f.col),{Name:f.col})];
+  const w=f.k==="fecha"?[]:where(f.k);
+  return body(sel, w, {Primary:{Groupings:[{Projections:[0]}]},DataReduction:{DataVolume:3,Primary:{Window:{Count:2000}}},Version:1}, [{Direction:1,Expression:col(f.src,f.col)}]);
+}
+
+/* ---- Formato ---- */
+const nf0=new Intl.NumberFormat("es-PE",{maximumFractionDigits:0});
+const nf2=new Intl.NumberFormat("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2});
+const num=v=>v==null?null:Number(v);
+function fmtDT(v){
+  if(v==null||v==="") return "";
+  if(typeof v==="string" && !/^\d+$/.test(v)) return v;
+  const d=new Date(Number(v)); if(isNaN(d)) return String(v);
+  const p=n=>String(n).padStart(2,"0");
+  return p(d.getUTCDate())+"/"+p(d.getUTCMonth()+1)+"/"+d.getUTCFullYear()+" "+p(d.getUTCHours())+":"+p(d.getUTCMinutes())+":"+p(d.getUTCSeconds());
+}
+function stClass(s){
+  s=(s||"").toLowerCase();
+  if(s.startsWith("entregado")) return "st-ent";
+  if(s.includes("visitar")) return "st-vis";
+  if(s.includes("sincronizar")) return "st-syn";
+  if(s.includes("modificacion")) return "st-mod";
+  if(s.includes("rechaz")) return "st-rec";
+  return "st-syn";
+}
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---- Render ---- */
+let rows=[], shown=PAGE, ctl=null;
+function renderChips(){
+  const active=FILTERS.filter(f=>state[f.k] && !(f.k==="fecha"&&state[f.k]==="Hoy"));
+  $("fCount").hidden=!active.length; $("fCount").textContent=active.length;
+  const parts=[`<button class="chip" data-k="fecha">Fecha: <b>${esc(state.fecha||"Todas")}</b></button>`];
+  FILTERS.slice(1).forEach(f=>{ if(state[f.k]) parts.push(`<button class="chip" data-k="${f.k}">${esc(f.label)}: <b>${esc(state[f.k])}</b> ✕</button>`); });
+  if(parts.length===1) parts.push(`<button class="chip" data-open="1">Centro, ruta, EDT, supervisor…</button>`);
+  $("chips").innerHTML=parts.join("");
+}
+function renderList(){
+  const L=$("list");
+  if(!rows.length){L.innerHTML=`<div class="empty">No hay clientes con estos filtros.</div>`;return}
+  const html=rows.slice(0,shown).map(r=>{
+    const [edt,ruta,viaje,cli,nom,sup,bdr,ven,est,al,tipo,fh,retro,hl,cajas]=r;
+    const isAl=(al||"")==="Si";
+    return `<article class="card${isAl?" alert":""}">
+      <div class="row1"><div class="cli"><div class="n">${esc(nom)}</div><div class="id">${esc(cli)} · ${esc(ruta)} · viaje ${esc(viaje)}</div></div>
+      <span class="pill ${stClass(est)}">${esc(est||"—")}</span></div>
+      <div class="facts">
+        <div><span>HL plan</span><strong>${hl==null?"—":nf2.format(num(hl))}</strong></div>
+        <div><span>Cajas</span><strong>${cajas==null?"—":nf2.format(num(cajas))}</strong></div>
+        <div><span>Ventana</span><strong>${esc(ven||"—")}</strong></div>
+        <div class="wide"><span>EDT</span><strong>${esc(edt||"—")}</strong></div>
+        <div class="wide"><span>Supervisor · BDR</span><strong>${esc(sup||"—")} · ${esc(bdr||"—")}</strong></div>
+      </div>
+      ${isAl?`<div class="al"><div class="t">${esc(tipo||"Alerta")}<small>${esc(fmtDT(fh))}</small></div>${retro?`<div>${esc(retro)}</div>`:""}</div>`:""}
+    </article>`;
+  }).join("");
+  L.innerHTML=html+(rows.length>shown?`<button class="btn more" id="more">Ver más (${nf0.format(rows.length-shown)} restantes)</button>`:"");
+  const m=$("more"); if(m) m.onclick=()=>{shown+=PAGE;renderList()};
+}
+function setBusy(b){$("btnRefresh").classList.toggle("spin",b)}
+
+async function load(){
+  if(ctl) ctl.abort(); ctl=new AbortController(); const sig=ctl.signal;
+  setBusy(true); renderChips();
+  if(!rows.length) $("list").innerHTML=`<div class="sk"></div><div class="sk"></div><div class="sk"></div>`;
+  try{
+    const [kd,td,ud]=await Promise.all([run(kpiQuery(),sig),run(tableQuery(),sig),run(updQuery(),sig).catch(()=>null)]);
+    const k=decode(dmRows(kd,0),kd.ValueDicts)[0]||[];
+    const [cl,en,pe,av]=k.map(num);
+    $("kCli").textContent=cl==null?"0":nf0.format(cl);
+    $("kEnt").textContent=en==null?"0":nf0.format(en);
+    $("kPen").textContent=pe==null?"0":nf0.format(pe);
+    const avp=av==null?0:av*100;
+    $("kAv").textContent=nf2.format(avp).replace(/,(\d)\d$/,",$1")+" %";
+    $("kBar").style.width=Math.max(0,Math.min(100,avp))+"%";
+    rows=decode(dmRows(td,1),td.ValueDicts);
+    const tot=decode(dmRows(td,0),td.ValueDicts)[0]||[];
+    shown=PAGE;
+    $("meta").textContent=nf0.format(rows.length)+" filas · "+(tot[0]!=null?nf2.format(num(tot[0]))+" HL plan":"");
+    renderList();
+    if(ud){const u=decode(dmRows(ud,0),ud.ValueDicts)[0]; $("upd").textContent=u&&u[0]?String(u[0]).replace(/^Informe Actualizado\s*:\s*/i,"Act. "):"";}
+  }catch(e){
+    if(e.name==="AbortError") return;
+    $("list").innerHTML=`<div class="err"><p><strong>No se pudo leer el reporte de Power BI.</strong></p><p>Revisa tu conexión. Si sigue fallando, es posible que el reporte se haya vuelto a publicar con otro enlace.</p><button class="btn pri" id="retry">Reintentar</button></div>`;
+    $("retry").onclick=load;
+  }finally{ if(!sig.aborted) setBusy(false); }
+}
+
+/* ---- Hoja de filtros ---- */
+let draft={};
+async function openSheet(){
+  draft=Object.assign({},state);
+  $("sheetBody").innerHTML=FILTERS.map(f=>`<div class="fld"><label for="f_${f.k}">${esc(f.label)}</label><select id="f_${f.k}" data-k="${f.k}"><option>Cargando…</option></select></div>`).join("");
+  $("sheet").hidden=false; $("sheetBg").hidden=false; document.body.style.overflow="hidden";
+  await fillOptions();
+}
+async function fillOptions(){
+  const saved=state; state=draft;
+  const qs=FILTERS.map(f=>run(optQuery(f)).then(ds=>decode(dmRows(ds,0),ds.ValueDicts).map(r=>r[0]).filter(v=>v!=null&&v!=="")).catch(()=>[]));
+  state=saved;
+  const lists=await Promise.all(qs);
+  FILTERS.forEach((f,i)=>{
+    const sel=$("f_"+f.k); if(!sel) return;
+    let vals=lists[i].map(String);
+    if(f.k==="fecha"){ vals=vals.filter(v=>v!=="Hoy"); vals.reverse(); vals.unshift("Hoy"); }
+    const cur=draft[f.k]||"";
+    if(cur && !vals.includes(cur)) vals.unshift(cur);
+    sel.innerHTML=(f.all===false?"":`<option value="">Todas</option>`)+vals.map(v=>`<option${v===cur?" selected":""}>${esc(v)}</option>`).join("");
+    sel.onchange=()=>{draft[f.k]=sel.value; fillOptions();};
+  });
+}
+function closeSheet(){$("sheet").hidden=true;$("sheetBg").hidden=true;document.body.style.overflow=""}
+$("btnFilters").onclick=openSheet;
+$("sheetClose").onclick=closeSheet; $("sheetBg").onclick=closeSheet;
+$("fApply").onclick=()=>{state=Object.assign({},draft); save(); closeSheet(); load();};
+$("fClear").onclick=()=>{FILTERS.forEach(f=>draft[f.k]=f.def||""); fillOptions();};
+$("chips").onclick=e=>{
+  const b=e.target.closest(".chip"); if(!b) return;
+  if(b.dataset.open||b.dataset.k==="fecha"){openSheet();return}
+  state[b.dataset.k]=""; save(); load();
+};
+$("btnRefresh").onclick=load;
+
+/* Búsqueda */
+let t=null; $("q").value=state.q||""; $("qClear").hidden=!state.q;
+$("q").addEventListener("input",()=>{ $("qClear").hidden=!$("q").value; clearTimeout(t); t=setTimeout(()=>{state.q=$("q").value.trim(); save(); load();},450); });
+$("qClear").onclick=()=>{$("q").value="";$("qClear").hidden=true;state.q="";save();load();};
+
+/* Actualización automática mientras la página está visible */
+setInterval(()=>{ if(document.visibilityState==="visible" && $("sheet").hidden) load(); }, AUTO_REFRESH_MIN*60000);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") load(); });
+
+load();
+})();
+</script>
+</body>
+</html>
